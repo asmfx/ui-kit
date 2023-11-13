@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { getControlValidationErrors } from "../helpers";
 import { UseDataControllerParameters, UseDataControllerReturnValues, IAnyValueHandler } from "../types";
 
-
 const selectProperty = (values: any, selector: string): { reference: any; key: string; value: any; } => {
   const arr = selector.split(/[.\[\]]/g).filter((i) => i !== "" || i !== undefined);
   if (arr.length < 2) {
@@ -26,7 +25,7 @@ const duplicateForUpdate = (source: any, selector: string, value: any, merge?: b
   const arr = selector.split(/[.\[\]]/g).filter((i) => i);
   const newValues = { ...source };
   if (arr.length < 2) {
-    newValues[selector] = { ...value };
+    newValues[selector] = typeof value === 'object' ?  { ...value } : value;
     return newValues;
   }
   const last = arr.splice(arr.length - 1, 1)[0];
@@ -206,8 +205,6 @@ export const useDataController = <T extends object>(
     }
     return false;
   };
-
-
 
   useEffect(() => {
     reset();
