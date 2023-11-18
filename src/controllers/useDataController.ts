@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
 import { getControlValidationErrors } from "../helpers";
-import { UseDataControllerParameters, UseDataControllerReturnValues, IAnyValueHandler } from "../types";
+import {
+  UseDataControllerParameters,
+  UseDataControllerReturnValues,
+  IAnyValueHandler,
+} from "../types";
 
-const selectProperty = (values: any, selector: string): { reference: any; key: string; value: any; } => {
-  const arr = selector.split(/[.\[\]]/g).filter((i) => i !== "" || i !== undefined);
+const selectProperty = (
+  values: any,
+  selector: string
+): { reference: any; key: string; value: any } => {
+  const arr = selector
+    .split(/[.\[\]]/g)
+    .filter((i) => i !== "" || i !== undefined);
   if (arr.length < 2) {
     return { reference: values, key: selector, value: values?.[selector] };
   }
@@ -21,11 +30,16 @@ const selectProperty = (values: any, selector: string): { reference: any; key: s
   return { reference, key: last, value: reference?.[last] };
 };
 
-const duplicateForUpdate = (source: any, selector: string, value: any, merge?: boolean): any => {
+const duplicateForUpdate = (
+  source: any,
+  selector: string,
+  value: any,
+  merge?: boolean
+): any => {
   const arr = selector.split(/[.\[\]]/g).filter((i) => i);
   const newValues = { ...source };
   if (arr.length < 2) {
-    newValues[selector] = typeof value === 'object' ?  { ...value } : value;
+    newValues[selector] = typeof value === "object" ? { ...value } : value;
     return newValues;
   }
   const last = arr.splice(arr.length - 1, 1)[0];
@@ -77,7 +91,9 @@ export const useDataController = <T extends object>(
   const { initialValues, validate, onSubmit, onChange, onSuccess, onFailed } =
     options || {};
   const [busy, setBusy] = useState<boolean>(false);
-  const [values, _setValues] = useState<Partial<T>>({ ...(initialValues || {}) });
+  const [values, _setValues] = useState<Partial<T>>({
+    ...(initialValues || {}),
+  });
   const [errors, _setErrors] = useState<any>({});
   const [checks, _setChecks] = useState<any>({});
   const dependency = JSON.stringify(initialValues);
@@ -155,7 +171,11 @@ export const useDataController = <T extends object>(
     return value;
   };
 
-  const setValue = (selector: string | undefined, value: any, merge?: boolean) => {
+  const setValue = (
+    selector: string | undefined,
+    value: any,
+    merge?: boolean
+  ) => {
     if (!selector) {
       const newValues = { ...values, ...value };
       updateInternalValues(newValues);
