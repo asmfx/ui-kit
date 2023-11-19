@@ -39,7 +39,11 @@ const duplicateForUpdate = (
   const arr = selector.split(/[.\[\]]/g).filter((i) => i);
   const newValues = { ...source };
   if (arr.length < 2) {
-    newValues[selector] = typeof value === "object" ? { ...value } : value;
+    if (typeof value === "object" && !Array.isArray(value)) {
+      newValues[selector] = { ...value };
+    } else {
+      newValues[selector] = value;
+    }
     return newValues;
   }
   const last = arr.splice(arr.length - 1, 1)[0];
