@@ -84,7 +84,11 @@ const duplicateForUpdate = (
   if (merge) {
     reference[last] = { ...(reference[last] || {}), ...value };
   } else {
-    reference[last] = { ...value };
+    if (typeof value === "object" && !Array.isArray(value)) {
+      reference[last] = { ...value };
+    } else {
+      reference[last] = value;
+    }
   }
   return newValues;
 };
