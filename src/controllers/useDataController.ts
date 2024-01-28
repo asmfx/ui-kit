@@ -5,6 +5,7 @@ import {
   UseDataControllerReturnValues,
   IAnyValueHandler,
 } from "../types";
+import { ValidationError } from "joi";
 
 const selectProperty = (
   values: any,
@@ -93,6 +94,23 @@ const duplicateForUpdate = (
   return newValues;
 };
 
+export const convertJOIError = (
+  joiError: ValidationError | any | undefined
+): any => {
+  if (!joiError) {
+    return {};
+  } else if (!joiError.details) {
+    return joiError;
+  } else if (!joiError.details.length) {
+    return {};
+  }
+  const entries = joiError.details.map((err) => [
+    err.path.map(String).join("."),
+    err.message,
+  ]);
+  return Object.fromEntries(entries);
+};
+
 export const useDataController = <T extends object>(
   options?: UseDataControllerParameters<T>
 ): UseDataControllerReturnValues<T> => {
@@ -115,9 +133,15 @@ export const useDataController = <T extends object>(
   const validateAndSet = (values: any, force?: boolean) => {
     if (!validate) {
       return true;
+    } else if (typeof validate === "function") {
+      const result = validate(values);
+      return setErrors(result, force);
+    } else {
+      const result = validate.validate(values, {
+        abortEarly: false,
+      });
+      return setErrors(result.error, force);
     }
-    const result = validate(values);
-    return setErrors(result, force);
   };
 
   const updateInternalValues = (newValues: any) => {
@@ -127,17 +151,18 @@ export const useDataController = <T extends object>(
   };
 
   const setErrors = (newErrors: any, force?: boolean) => {
-    const keys = Object.keys(newErrors).filter(
+    const _newErrors = convertJOIError(newErrors);
+    const keys = Object.keys(_newErrors).filter(
       (o) => !["isValid", "validate"].includes(o)
     );
     const findings = keys.flatMap((name) =>
-      getControlValidationErrors(newErrors, name)
+      getControlValidationErrors(_newErrors, name)
     );
     const isValid = findings.length === 0;
-    _setChecks({ ...newErrors, isValid });
+    _setChecks({ ..._newErrors, isValid });
 
-    if (errors.validate || force) {
-      _setErrors({ ...newErrors, isValid, validate: true });
+    if (errors?.validate || force) {
+      _setErrors({ ..._newErrors, isValid, validate: true });
       return isValid;
     }
     return false;

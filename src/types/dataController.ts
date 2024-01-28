@@ -1,8 +1,9 @@
+import { Schema, ValidationError } from "joi";
 import { ValidReturnTypes } from "./common";
 
 export interface UseDataControllerParameters<T> {
   initialValues?: Partial<T>;
-  validate?: ((values: Partial<T>) => any) | any;
+  validate?: ((values: Partial<T>) => ValidationError | undefined) | Schema;
   onChange?: (values: Partial<T>, checks: any) => ValidReturnTypes;
   onSubmit?: (values: Partial<T>) => any;
   onSuccess?: (result: any, values: Partial<T>) => any;

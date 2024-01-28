@@ -14,7 +14,7 @@ const commonConfig = {
     platform: 'node',
     entryPoints: [packageJSON.source],
     bundle: true,
-    minify: true,
+    minify: false,
     sourcemap: optionSourceMap,
     plugins: [nodeExternalsPlugin()],
 };
