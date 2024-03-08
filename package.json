@@ -1,6 +1,6 @@
 {
   "name": "@asmfx/ui-kit",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "React UI Kit",
   "keywords": [
     "UI",
@@ -20,8 +20,9 @@
     "dev-build": "run-s clean dev-build:*",
     "build:tsc": "tsc --noEmit",
     "build:bundle": "node bundle.js --dts",
-    "build": "run-s clean build:*",
-    "prepublish": "run-s build",
+    "version:prerelease": "yarn version --prerelease --no-git-tag-version",
+    "build": "run-s clean build:* version:prerelease",
+    "prepublish": "run-s clean build:*",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
