@@ -104,10 +104,12 @@ export const convertJOIError = (
   } else if (!joiError.details.length) {
     return {};
   }
-  const entries = joiError.details.map((err) => [
-    err.path.map(String).join("."),
-    err.message,
-  ]);
+  const entries = joiError.details.map(
+    (err: { path: string[]; message: any }) => [
+      err.path.map(String).join("."),
+      err.message,
+    ]
+  );
   return Object.fromEntries(entries);
 };
 
