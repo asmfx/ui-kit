@@ -144,10 +144,12 @@ export const useDataController = <T extends object>(
     }
   };
 
-  const updateInternalValues = (newValues: any) => {
+  const updateInternalValues = (newValues: any, triggerOnChange = true) => {
     const isValid = validateAndSet(newValues);
     _setValues(newValues);
-    onChange?.(newValues, { isValid });
+    if (triggerOnChange) {
+      onChange?.(newValues, { isValid });
+    }
   };
 
   const setErrors = (newErrors: any, force?: boolean) => {
@@ -207,15 +209,20 @@ export const useDataController = <T extends object>(
   const setValue = (
     selector: string | undefined,
     value: any,
-    merge?: boolean
+    options?: { merge?: boolean; triggerOnChange?: boolean }
   ) => {
     if (!selector) {
       const newValues = { ...values, ...value };
-      updateInternalValues(newValues);
+      updateInternalValues(newValues, options?.triggerOnChange);
       return;
     }
-    const newValues = duplicateForUpdate(values, selector, value, merge);
-    updateInternalValues(newValues);
+    const newValues = duplicateForUpdate(
+      values,
+      selector,
+      value,
+      options?.merge
+    );
+    updateInternalValues(newValues, options?.triggerOnChange);
   };
 
   const changeHandler = ({ name, selector, value }: IAnyValueHandler) => {
