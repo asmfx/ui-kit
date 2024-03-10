@@ -6,6 +6,7 @@ import {
   IAnyValueHandler,
 } from "../types";
 import { ValidationError } from "joi";
+import { EventEmitter } from "./EventEmitter";
 
 const selectProperty = (
   values: any,
@@ -124,7 +125,14 @@ export const useDataController = <T extends object>(
   });
   const [errors, _setErrors] = useState<any>({});
   const [checks, _setChecks] = useState<any>({});
+  const [events, _setEvents] = useState<EventEmitter>(new EventEmitter());
   const dependency = JSON.stringify(initialValues);
+
+  const log = (...params: any[]) => {
+    if (options?.verbose) {
+      console.log("[ui-kit]", ...params);
+    }
+  };
 
   const reset = (values?: Partial<T>) => {
     _setValues(values ? { ...values } : { ...(initialValues || {}) });
@@ -146,11 +154,20 @@ export const useDataController = <T extends object>(
     }
   };
 
-  const updateInternalValues = (newValues: any, triggerOnChange = true) => {
+  const updateInternalValues = (
+    selector: string | undefined,
+    newValues: any,
+    triggerOnChange = true,
+    onChangeEvent?: string
+  ) => {
     const isValid = validateAndSet(newValues);
     _setValues(newValues);
     if (triggerOnChange) {
-      onChange?.(newValues, { isValid });
+      log("onChange:", onChange, newValues, { isValid }, onChangeEvent);
+      onChange?.(newValues, { isValid, selector });
+      if (onChangeEvent) {
+        events.emit(onChangeEvent, { selector, values: newValues, isValid });
+      }
     }
   };
 
@@ -211,11 +228,21 @@ export const useDataController = <T extends object>(
   const setValue = (
     selector: string | undefined,
     value: any,
-    options?: { merge?: boolean; triggerOnChange?: boolean }
+    options?: {
+      merge?: boolean;
+      triggerOnChange?: boolean;
+      triggerEvent?: string;
+    }
   ) => {
+    log("setValue:", selector, value, options);
     if (!selector) {
       const newValues = { ...values, ...value };
-      updateInternalValues(newValues, options?.triggerOnChange);
+      updateInternalValues(
+        selector,
+        newValues,
+        options?.triggerOnChange !== false,
+        options?.triggerEvent
+      );
       return;
     }
     const newValues = duplicateForUpdate(
@@ -224,7 +251,12 @@ export const useDataController = <T extends object>(
       value,
       options?.merge
     );
-    updateInternalValues(newValues, options?.triggerOnChange);
+    updateInternalValues(
+      selector,
+      newValues,
+      options?.triggerOnChange !== false,
+      options?.triggerEvent
+    );
   };
 
   const changeHandler = ({ name, selector, value }: IAnyValueHandler) => {
@@ -236,6 +268,7 @@ export const useDataController = <T extends object>(
       return false;
     }
     if (onSubmit) {
+      log("onSubmit:", values);
       try {
         setBusy(true);
         const result = await onSubmit(values);
@@ -281,6 +314,7 @@ export const useDataController = <T extends object>(
     values,
     errors,
     checks,
+    events,
     reset,
     getValue,
     setValue,

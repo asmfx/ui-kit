@@ -1,10 +1,12 @@
 import { Schema, ValidationError } from "joi";
 import { ValidReturnTypes } from "./common";
+import { EventEmitter } from "../controllers/EventEmitter";
 
 export interface UseDataControllerParameters<T> {
   initialValues?: Partial<T>;
+  verbose?: boolean;
   validate?: ((values: Partial<T>) => ValidationError | undefined) | Schema;
-  onChange?: (values: Partial<T>, checks: any) => ValidReturnTypes;
+  onChange?: (values: Partial<T>, options: any) => ValidReturnTypes;
   onSubmit?: (values: Partial<T>) => any;
   onSuccess?: (result: any, values: Partial<T>) => any;
   onFailed?: (error: any, values: Partial<T>) => any;
@@ -25,6 +27,7 @@ export interface UseDataControllerReturnValues<T> {
   errors: any;
   checks: any;
   busy: boolean;
+  events: EventEmitter;
 
   getValue: (selector?: string) => any;
   setValue: (
