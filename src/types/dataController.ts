@@ -33,7 +33,18 @@ export interface UseDataControllerReturnValues<T> {
   setValue: (
     selector: string | undefined,
     value: any,
-    options?: { merge?: boolean; triggerOnChange?: boolean }
+    options?: {
+      merge?: boolean;
+      triggerOnChange?: boolean;
+      triggerEvent?: string;
+    }
+  ) => ValidReturnTypes;
+  deleteValue: (
+    selector: string,
+    options?: {
+      triggerOnChange?: boolean;
+      triggerEvent?: string;
+    }
   ) => ValidReturnTypes;
 
   setErrors: (values: any, force?: boolean) => ValidReturnTypes;

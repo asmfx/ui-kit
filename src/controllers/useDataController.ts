@@ -154,7 +154,7 @@ export const useDataController = <T extends object>(
     }
   };
 
-  const updateInternalValues = (
+  const updateInternalValues = async (
     selector: string | undefined,
     newValues: any,
     triggerOnChange = true,
@@ -163,11 +163,23 @@ export const useDataController = <T extends object>(
     const isValid = validateAndSet(newValues);
     _setValues(newValues);
     if (triggerOnChange) {
-      log("onChange:", onChange, newValues, { isValid }, onChangeEvent);
+      log("onChange:", { onChange, newValues, options: { isValid, selector } });
       onChange?.(newValues, { isValid, selector });
-      if (onChangeEvent) {
-        events.emit(onChangeEvent, { selector, values: newValues, isValid });
-      }
+    }
+    if (onChangeEvent) {
+      log("onChangeEvent:", {
+        onChangeEvent,
+        args: {
+          selector,
+          values: newValues,
+          isValid,
+        },
+      });
+      await events.emit(onChangeEvent, {
+        selector,
+        values: newValues,
+        isValid,
+      });
     }
   };
 
@@ -225,7 +237,26 @@ export const useDataController = <T extends object>(
     return value;
   };
 
-  const setValue = (
+  const deleteValue = async (
+    selector: string,
+    options?: {
+      triggerOnChange?: boolean;
+      triggerEvent?: string;
+    }
+  ) => {
+    log("deleteValue:", { selector, options });
+    const clone = structuredClone(values);
+    const { reference, key } = selectProperty(clone, selector);
+    delete reference[key];
+    updateInternalValues(
+      selector,
+      clone,
+      options?.triggerOnChange !== false,
+      options?.triggerEvent
+    );
+  };
+
+  const setValue = async (
     selector: string | undefined,
     value: any,
     options?: {
@@ -234,16 +265,17 @@ export const useDataController = <T extends object>(
       triggerEvent?: string;
     }
   ) => {
-    log("setValue:", selector, value, options);
+    log("setValue:", { selector, value, options });
     if (!selector) {
-      const newValues = { ...values, ...value };
-      updateInternalValues(
+      const newValues = !!options?.merge
+        ? { ...(values || {}), ...value }
+        : value;
+      return updateInternalValues(
         selector,
         newValues,
         options?.triggerOnChange !== false,
         options?.triggerEvent
       );
-      return;
     }
     const newValues = duplicateForUpdate(
       values,
@@ -251,7 +283,7 @@ export const useDataController = <T extends object>(
       value,
       options?.merge
     );
-    updateInternalValues(
+    return updateInternalValues(
       selector,
       newValues,
       options?.triggerOnChange !== false,
@@ -318,6 +350,7 @@ export const useDataController = <T extends object>(
     reset,
     getValue,
     setValue,
+    deleteValue,
     setErrors,
     setError,
     clearError,

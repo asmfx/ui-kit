@@ -12,7 +12,7 @@ export type EventHandler = (
 
 export interface IEventRegistery {
   [event: string]: {
-    key: string;
+    id: string;
     handler: EventHandler;
   }[];
 }
@@ -22,42 +22,42 @@ export interface EventEmitterProps {
 }
 
 export class EventEmitter {
-  registery: IEventRegistery = {};
+  registry: IEventRegistery = {};
   constructor(public readonly props?: EventEmitterProps) {}
 
   addListener(event: string, handler: EventHandler) {
-    if (!this.registery[event]) {
-      this.registery[event] = [];
+    if (!this.registry[event]) {
+      this.registry[event] = [];
     }
     const key = makeCUID();
-    this.registery[event].push({
-      key,
+    this.registry[event].push({
+      id: key,
       handler,
     });
     return key;
   }
 
-  removeListener(key: string) {
-    const keys = Object.keys(this.registery);
+  removeListener(id: string) {
+    const keys = Object.keys(this.registry);
     for (const key of keys) {
-      const entry = this.registery[key].find((i) => i.key === key);
+      const entry = this.registry[key].find((i) => i.id === id);
       if (entry) {
-        this.registery[key] = this.registery[key].filter((i) => i.key !== key);
+        this.registry[key] = this.registry[key].filter((i) => i.id !== id);
         return;
       }
     }
   }
 
   removeAllListener(key: string) {
-    delete this.registery[key];
+    delete this.registry[key];
   }
 
-  emit(event: string, args: any) {
-    if (!this.registery[event]) {
+  async emit(event: string, args?: any) {
+    if (!this.registry[event]) {
       return;
     }
-    for (const eventHandlerItem of this.registery[event]) {
-      eventHandlerItem.handler({
+    for (const eventHandlerItem of this.registry[event]) {
+      await eventHandlerItem.handler({
         sender: this.props?.sender || this,
         event,
         args,
