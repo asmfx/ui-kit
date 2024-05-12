@@ -15,6 +15,9 @@ export const Portal: React.FC<IPortalProps> = (props) => {
   }, []);
 
   return (
-    <>{isClient && ReactDOM.createPortal(children, refNode || document.body)}</>
+    <>
+      {isClient &&
+        ReactDOM.createPortal(children as any, refNode || document.body)}
+    </>
   );
 };

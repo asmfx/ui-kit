@@ -5,12 +5,13 @@ import {
   UseDataControllerReturnValues,
   IAnyValueHandler,
 } from "../types";
-import { ValidationError } from "joi";
+import { ValidationError, ref } from "joi";
 import { EventEmitter } from "./EventEmitter";
 
 const selectProperty = (
   values: any,
-  selector: string
+  selector: string,
+  createIfNotExists?: boolean
 ): { reference: any; key: string; value: any } => {
   const arr = selector
     .split(/[.\[\]]/g)
@@ -21,12 +22,27 @@ const selectProperty = (
   const last = arr.splice(arr.length - 1, 1)[0];
   let reference = values;
   for (const key of arr) {
+    let parentRef = reference;
     if (key.includes(":")) {
       const [field, value] = key.split(":");
       reference = reference?.find?.((item: any) => item[field] == value);
     } else {
       const index = key ? parseInt(key) : NaN;
-      reference = isNaN(index) ? reference?.[key] : reference?.[index];
+      if (isNaN(index)) {
+        if (createIfNotExists && reference?.[key] === undefined) {
+          parentRef[key] = {};
+        }
+        reference = reference?.[key];
+      } else {
+        if (
+          createIfNotExists &&
+          index === 0 &&
+          reference?.[index] === undefined
+        ) {
+          parentRef.push({});
+        }
+        reference = reference?.[index];
+      }
     }
   }
   return { reference, key: last, value: reference?.[last] };
@@ -123,6 +139,7 @@ export const useDataController = <T extends object>(
   const [values, _setValues] = useState<Partial<T>>({
     ...(initialValues || {}),
   });
+  const [version, _setVersion] = useState(0);
   const [errors, _setErrors] = useState<any>({});
   const [checks, _setChecks] = useState<any>({});
   const [events, _setEvents] = useState<EventEmitter>(new EventEmitter());
@@ -136,6 +153,7 @@ export const useDataController = <T extends object>(
 
   const reset = (values?: Partial<T>) => {
     _setValues(values ? { ...values } : { ...(initialValues || {}) });
+    _setVersion(version + 1);
     _setChecks({});
     _setErrors({});
   };
@@ -162,6 +180,8 @@ export const useDataController = <T extends object>(
   ) => {
     const isValid = validateAndSet(newValues);
     _setValues(newValues);
+    _setVersion(version + 1);
+
     if (triggerOnChange) {
       log("onChange:", { onChange, newValues, options: { isValid, selector } });
       onChange?.(newValues, { isValid, selector });
@@ -245,11 +265,114 @@ export const useDataController = <T extends object>(
     }
   ) => {
     log("deleteValue:", { selector, options });
+    const arrSelector = selector.split(".");
+    const intKey = parseInt(arrSelector.pop() || "N/A");
     const clone = structuredClone(values);
-    const { reference, key } = selectProperty(clone, selector);
-    delete reference[key];
+
+    if (isNaN(intKey)) {
+      const { reference, key } = selectProperty(clone, selector);
+      delete reference[key];
+    } else {
+      selector = arrSelector.join(".");
+      const { reference, key } = selectProperty(clone, selector);
+      reference[key].splice(intKey, 1);
+    }
     updateInternalValues(
       selector,
+      clone,
+      options?.triggerOnChange !== false,
+      options?.triggerEvent
+    );
+  };
+
+  const move = async (
+    from: string,
+    to: string,
+    options?: {
+      triggerOnChange?: boolean;
+      triggerEvent?: string;
+    }
+  ) => {
+    const clone = structuredClone(values);
+    const fromArr = from.split(".");
+    const toArr = to.split(".");
+    const fromIndex = parseInt(fromArr.pop() || "N/A");
+    const toIndex = parseInt(toArr.pop() || "N/A");
+    const fromParent = fromArr.join(".") as string;
+    const toParent = toArr.join(".") as string;
+    const { value: item } = selectProperty(clone, from);
+
+    if (
+      from === to || // if same key
+      to.startsWith(from) // inner move
+    ) {
+      log("move", "cancel");
+      return;
+    }
+    log("move", { from, to, fromParent, toParent, fromIndex, toIndex, item });
+
+    if (!isNaN(fromIndex) && !isNaN(toIndex)) {
+      const { reference: fromRef, key: fromKey } = selectProperty(
+        clone,
+        fromParent
+      );
+      const {
+        reference: toRef,
+        key: toKey,
+        value: toValue,
+      } = selectProperty(clone, toParent, true);
+
+      if (toRef[toKey] === undefined && toIndex === 0) {
+        toRef[toKey] = [];
+      }
+      // Array move
+      log("move", "array_move");
+      if (fromParent === toParent && fromIndex > toIndex) {
+        // action: arr_delete
+        fromRef[fromKey].splice(fromIndex, 1);
+        // action: arr_inject
+
+        toRef[toKey].splice(toIndex, 0, item);
+      } else {
+        // action:arr_inject
+        toRef[toKey].splice(toIndex, 0, item);
+        // action:arr_delete
+        fromRef[fromKey].splice(fromIndex, 1);
+      }
+    } else {
+      log("move", "non_array_move");
+
+      if (!isNaN(toIndex)) {
+        // action:arr_inject
+        const { reference: toRef, key: toKey } = selectProperty(
+          clone,
+          toParent
+        );
+        toRef[toKey].splice(toIndex, 0, item);
+      } else {
+        // action:inject
+        const { reference: toRef, key: toKey } = selectProperty(clone, to);
+        toRef[toKey] = item;
+      }
+      if (!isNaN(fromIndex)) {
+        // action:arr_delete
+        const { reference: fromRef, key: fromKey } = selectProperty(
+          clone,
+          fromParent
+        );
+        fromRef[fromKey].splice(fromIndex, 1);
+      } else {
+        // action:delete
+        const { reference: fromRef, key: fromKey } = selectProperty(
+          clone,
+          from
+        );
+        delete fromRef[fromKey];
+      }
+    }
+
+    return updateInternalValues(
+      to,
       clone,
       options?.triggerOnChange !== false,
       options?.triggerEvent
@@ -283,6 +406,34 @@ export const useDataController = <T extends object>(
       value,
       options?.merge
     );
+    return updateInternalValues(
+      selector,
+      newValues,
+      options?.triggerOnChange !== false,
+      options?.triggerEvent
+    );
+  };
+
+  const injectToArray = async (
+    selector: string,
+    value: any,
+    options?: {
+      merge?: boolean;
+      triggerOnChange?: boolean;
+      triggerEvent?: string;
+    }
+  ) => {
+    log("injectToArray:", { selector, value, options });
+    const arrSelector = selector.split(".");
+    const intKey = parseInt(arrSelector.pop() || "N/A");
+    if (isNaN(intKey)) {
+      return;
+    }
+    selector = arrSelector.join(".");
+
+    const newValues = structuredClone(values);
+    const { reference, key } = selectProperty(newValues, selector);
+    reference[key].splice(intKey, 0, value);
     return updateInternalValues(
       selector,
       newValues,
@@ -347,9 +498,12 @@ export const useDataController = <T extends object>(
     errors,
     checks,
     events,
+    version,
     reset,
     getValue,
     setValue,
+    injectToArray,
+    move,
     deleteValue,
     setErrors,
     setError,

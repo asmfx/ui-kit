@@ -28,10 +28,20 @@ export interface UseDataControllerReturnValues<T> {
   checks: any;
   busy: boolean;
   events: EventEmitter;
+  version: number;
 
   getValue: (selector?: string) => any;
   setValue: (
     selector: string | undefined,
+    value: any,
+    options?: {
+      merge?: boolean;
+      triggerOnChange?: boolean;
+      triggerEvent?: string;
+    }
+  ) => ValidReturnTypes;
+  injectToArray: (
+    selector: string,
     value: any,
     options?: {
       merge?: boolean;
@@ -46,6 +56,8 @@ export interface UseDataControllerReturnValues<T> {
       triggerEvent?: string;
     }
   ) => ValidReturnTypes;
+
+  move: (from: string, to: string) => ValidReturnTypes;
 
   setErrors: (values: any, force?: boolean) => ValidReturnTypes;
   setError: (key: string, option?: any) => ValidReturnTypes;
