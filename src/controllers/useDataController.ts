@@ -463,24 +463,30 @@ export const useDataController = <T extends object>(
           if (result.status === 0) {
             onSuccess && (await onSuccess(result, values));
             reset();
+            setBusy(false);
             return true;
           } else {
             onFailed && (await onFailed(result, values));
+            setBusy(false);
             return false;
           }
         } else if (result !== false) {
           onSuccess && (await onSuccess(result, values));
           reset();
+          setBusy(false);
           return true;
         } else {
           onFailed && (await onFailed(result, values));
+          setBusy(false);
           return false;
         }
       } catch (err) {
         onFailed && (await onFailed(err, values));
+        setBusy(false);
         return false;
       }
     }
+    setBusy(false);
     return false;
   };
 
